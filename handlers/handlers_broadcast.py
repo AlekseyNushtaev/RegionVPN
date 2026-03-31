@@ -206,6 +206,17 @@ async def broadcast_confirm_send(callback: CallbackQuery, state: FSMContext, bot
     user_ids.append(1012882762)
     for user_id in user_ids:
         try:
+            keyboard_broadcast = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                InlineKeyboardButton(
+                    text="Поделиться 💬",
+                    url=f"https://t.me/share/url?url={BOT_URL}?start=ref{user_id}&text={urllib.parse.quote('Вот ссылка для тебя на надежный VPN!')}",
+                    style=STYLE_SUCCESS,
+                )
+            ]
+            ]
+            )
             await bot.copy_message(
                 chat_id=user_id,
                 from_chat_id=broadcast_chat_id,
