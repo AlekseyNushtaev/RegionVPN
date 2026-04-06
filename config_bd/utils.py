@@ -1,3 +1,4 @@
+import time
 import uuid
 
 from sqlalchemy import select, update, func, and_, or_
@@ -6,7 +7,7 @@ from datetime import datetime, date, timedelta
 from typing import Optional, List, Tuple, Dict, Any
 
 from config_bd.models import AsyncSessionLocal, Users, Payments, Gifts, PaymentsCryptobot, PaymentsStars, Online, \
-    WhiteCounter, PaymentsCards, PaymentsPlategaCrypto
+    WhiteCounter, PaymentsCards, PaymentsPlategaCrypto, PaymentsFkSBP
 from logging_config import logger
 
 # Пакетная обработка для /stat: меньше 999 — лимит переменных SQLite в одном запросе.
@@ -624,6 +625,62 @@ class AsyncSQL:
                 logger.error(f"Error activating gift {gift_id} for user {recipient_id}: {e}")
                 return False, None, None
 
+    async def alloc_fk_api_nonce(self) -> int:
+        """
+        Уникальный растущий nonce для FreeKassa API без отдельной таблицы.
+        time.time_ns() монотонен между последовательными вызовами в процессе бота.
+        """
+        return time.time_ns() // 1000
+
+    async def get_pending_fk_sbp_payments(self) -> List[PaymentsFkSBP]:
+        async with self.session_factory() as session:
+            stmt = select(PaymentsFkSBP).where(PaymentsFkSBP.status == 'pending')
+            result = await session.execute(stmt)
+            return result.scalars().all()
+
+    async def update_fk_sbp_payment_status(self, transaction_id: str, new_status: str) -> None:
+        async with self.session_factory() as session:
+            stmt = update(PaymentsFkSBP).where(
+                PaymentsFkSBP.transaction_id == transaction_id
+            ).values(status=new_status)
+            await session.execute(stmt)
+            await session.commit()
+
+    async def add_fk_sbp_payment(
+            self,
+            user_id: int,
+            amount: int,
+            status: str,
+            transaction_id: str,
+            fk_order_id: Optional[int],
+            payload: str,
+            nonce: int,
+            signature: str,
+            is_gift: bool = False,
+    ) -> None:
+        async with self.session_factory() as session:
+            payment = PaymentsFkSBP(
+                user_id=user_id,
+                amount=amount,
+                status=status,
+                transaction_id=transaction_id,
+                fk_order_id=fk_order_id,
+                payload=payload,
+                nonce=nonce,
+                signature=signature,
+                method='fksbp',
+                is_gift=is_gift,
+            )
+            session.add(payment)
+            try:
+                await session.commit()
+                logger.success(
+                    f"💰 Платёж FreeKassa СБП записан: user_id={user_id}, amount={amount}, is_gift={is_gift}")
+            except Exception as e:
+                await session.rollback()
+                logger.error(f"❌ Ошибка записи платежа FreeKassa: {e}")
+                raise
+
     async def get_pending_platega_payments(self) -> List[Payments]:
         """Возвращает все платежи из таблицы payments со статусом 'pending'."""
         async with self.session_factory() as session:
@@ -892,6 +949,7 @@ class AsyncSQL:
             payments_platega_crypto_list = (await session.execute(select(PaymentsPlategaCrypto))).scalars().all()
             payments_stars_list = (await session.execute(select(PaymentsStars))).scalars().all()
             payments_cryptobot_list = (await session.execute(select(PaymentsCryptobot))).scalars().all()
+            payments_fk_sbp_list = (await session.execute(select(PaymentsFkSBP))).scalars().all()
             gifts_list = (await session.execute(select(Gifts))).scalars().all()
             online_list = (await session.execute(select(Online))).scalars().all()
             white_counter_list = (await session.execute(select(WhiteCounter))).scalars().all()
@@ -902,6 +960,7 @@ class AsyncSQL:
             "payments_platega_crypto": payments_platega_crypto_list,
             "payments_stars": payments_stars_list,
             "payments_cryptobot": payments_cryptobot_list,
+            "payments_fk_sbp": payments_fk_sbp_list,
             "gifts": gifts_list,
             "online": online_list,
             "white_counter": white_counter_list,
@@ -935,13 +994,15 @@ class AsyncSQL:
                 PaymentsPlategaCrypto.status == 'confirmed')
             subq_stars = select(PaymentsStars.user_id).where(PaymentsStars.status == 'confirmed')
             subq_cryptobot = select(PaymentsCryptobot.user_id).where(PaymentsCryptobot.status == 'paid')
+            subq_fk_sbp = select(PaymentsFkSBP.user_id).where(PaymentsFkSBP.status == 'confirmed')
 
             union_query = union(
                 subq_payments,
                 subq_cards,
                 subq_platega_crypto,
                 subq_stars,
-                subq_cryptobot
+                subq_cryptobot,
+                subq_fk_sbp,
             ).subquery()
 
             stmt = (

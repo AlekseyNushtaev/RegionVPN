@@ -10,6 +10,11 @@ ADMIN_IDS: Set[int] = {int(x) for x in os.environ.get("ADMIN_IDS", "").split(', 
 CHECKER_IDS: Set[int] = {int(x) for x in os.environ.get("CHECKER_IDS", "").split(', ')} if os.environ.get("CHECKER_IDS") else set()
 PLATEGA_API_KEY: Optional[str] = os.environ.get("PLATEGA_API_KEY")
 PLATEGA_MERCHANT_ID: Optional[str] = os.environ.get("PLATEGA_MERCHANT_ID")
+API_FREEKASSA: Optional[str] = (os.environ.get("API_FREEKASSA") or "").strip() or None
+SHOP_ID_FREEKASSA: Optional[int] = (
+    int(os.environ["SHOP_ID_FREEKASSA"]) if os.environ.get("SHOP_ID_FREEKASSA") else None
+)
+FREEKASSA_SERVER_IP: str = os.environ.get("FREEKASSA_SERVER_IP", "72.56.14.94")
 CHANEL_ID: Optional[int] = int(os.environ.get("CHANEL_ID"))
 CRYPTOBOT_API_TOKEN: Optional[str] = os.environ.get("CRYPTOBOT_API_TOKEN")
 PANEL_URL: Optional[str] = os.environ.get("PANEL_URL")

@@ -35,6 +35,7 @@ async def export_database_to_excel(message: Message):
             payments_platega_crypto_list = snapshot["payments_platega_crypto"]
             payments_stars_list = snapshot["payments_stars"]
             payments_cryptobot_list = snapshot["payments_cryptobot"]
+            payments_fk_sbp_list = snapshot["payments_fk_sbp"]
             gifts_list = snapshot["gifts"]
             online_list = snapshot["online"]
             white_counter_list = snapshot["white_counter"]
@@ -117,9 +118,38 @@ async def export_database_to_excel(message: Message):
                     if cell.value:
                         max_len = max(max_len, len(str(cell.value)))
                 ws_payments.column_dimensions[col_letter].width = min(max_len + 2, 50)
-            
-            
-            
+
+            # --- Лист PAYMENTS_FK_SBP (FreeKassa СБП) ---
+            ws_fk_sbp = wb.create_sheet(title="payments_fk_sbp")
+            fk_columns = [
+                'ID', 'User ID', 'Amount', 'Time Created', 'Is Gift', 'Status',
+                'Transaction_Id', 'FK_Order_Id', 'Nonce', 'Signature', 'Method', 'Payload',
+            ]
+            for col_num, title in enumerate(fk_columns, 1):
+                cell = ws_fk_sbp.cell(row=1, column=col_num, value=title)
+                cell.alignment = header_alignment
+                cell.border = thin_border
+
+            for row_num, pay in enumerate(payments_fk_sbp_list, 2):
+                row_data = [
+                    pay.id, pay.user_id, pay.amount, pay.time_created,
+                    pay.is_gift, pay.status, pay.transaction_id, pay.fk_order_id,
+                    pay.nonce, pay.signature, pay.method, pay.payload,
+                ]
+                for col_num, value in enumerate(row_data, 1):
+                    if col_num == 4 and value and isinstance(value, datetime):
+                        value = value.strftime('%Y-%m-%d %H:%M:%S')
+                    cell = ws_fk_sbp.cell(row=row_num, column=col_num, value=value)
+                    cell.border = thin_border
+
+            for col in ws_fk_sbp.columns:
+                max_len = 0
+                col_letter = col[0].column_letter
+                for cell in col:
+                    if cell.value:
+                        max_len = max(max_len, len(str(cell.value)))
+                ws_fk_sbp.column_dimensions[col_letter].width = min(max_len + 2, 50)
+
             # --- Лист PAYMENTS_CARDS (платежи по картам) ---
             ws_payments_cards = wb.create_sheet(title="payments_cards")
             cards_columns = ['ID', 'User ID', 'Amount', 'Time Created', 'Is Gift', 'Status', 'Transaction_Id',
@@ -314,7 +344,7 @@ async def export_database_to_excel(message: Message):
                 ws_white_counter.column_dimensions[col_letter].width = min(max_len + 2, 50)
             
             # Заморозка заголовков
-            for ws in [ws_users, ws_payments, ws_payments_cards, ws_payments_stars, ws_platega_crypto,
+            for ws in [ws_users, ws_payments, ws_fk_sbp, ws_payments_cards, ws_payments_stars, ws_platega_crypto,
                        ws_payments_cryptobot, ws_gifts, ws_online, ws_white_counter]:
                 ws.freeze_panes = ws['A2']
 
@@ -331,6 +361,7 @@ async def export_database_to_excel(message: Message):
         payments_stars_list = snapshot["payments_stars"]
         payments_platega_crypto_list = snapshot["payments_platega_crypto"]
         payments_cryptobot_list = snapshot["payments_cryptobot"]
+        payments_fk_sbp_list = snapshot["payments_fk_sbp"]
 
         users_count = len(users_list)
         gifts_count = len(gifts_list)
@@ -351,20 +382,23 @@ async def export_database_to_excel(message: Message):
         )
         successful_stars_count = sum(1 for p in payments_stars_list if p.status == "confirmed")
         successful_cryptobot_count = sum(1 for p in payments_cryptobot_list if p.status == "paid")
+        successful_fk_sbp_count = sum(1 for p in payments_fk_sbp_list if p.status == "confirmed")
+        fk_sbp_count = len(payments_fk_sbp_list)
 
         try:
             now_s = datetime.now().strftime('%d.%m.%Y %H:%M')
             caption = (
-                "📊 Экспорт базы данных\n"
+                "📊 Экспорт базы данных (Excel)\n"
                 f"📅 Создано: {now_s}\n\n"
-                "📊 Статистика:\n"
+                "📊 Краткая сводка по платежам:\n"
                 f"├ 👥 Пользователей: {users_count}\n"
                 f"├ 🎁 Подарков: {gifts_count}\n"
-                f"├ ⚡ Платежей Platega СБП: {successful_payments_count}/{payments_count}\n"
-                f"├ 💳 Платежей Platega Карта: {successful_cards_count}/{payments_cards_count}\n"
-                f"├ ⭐ Платежей Stars: {successful_stars_count}/{payments_stars_count}\n"
-                f"├ 💰 Платежей Platega Крипто: {successful_platega_crypto_count}/{payments_platega_crypto_count}\n"
-                f"├ 💎 Платежей Криптоботом: {successful_cryptobot_count}/{payments_cryptobot_count}\n"
+                f"├ 📲 FreeKassa СБП: {successful_fk_sbp_count}/{fk_sbp_count}\n"
+                f"├ ⚡ Platega СБП (архив): {successful_payments_count}/{payments_count}\n"
+                f"├ 💳 Platega Карта: {successful_cards_count}/{payments_cards_count}\n"
+                f"├ ⭐ Stars: {successful_stars_count}/{payments_stars_count}\n"
+                f"├ 💰 Platega Крипто: {successful_platega_crypto_count}/{payments_platega_crypto_count}\n"
+                f"├ 💎 Криптобот: {successful_cryptobot_count}/{payments_cryptobot_count}\n"
                 f"├ ⚪ White-подписок: {white_subscription_count}\n"
                 f"└ 👁 White-кликов: {white_counter_count}"
             )
