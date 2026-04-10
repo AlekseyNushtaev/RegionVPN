@@ -325,8 +325,9 @@ async def activate_gift(message: Message, gift_id: str):
 
 @router.callback_query(F.data == 'video_faq')
 async def video_faq(callback: CallbackQuery):
+    await callback.answer()
     await callback.message.answer_video(
-        video='BAACAgIAAxkBAAECpqNpqrDnzrb_G1rcEtZli39lGgVpMAACa5sAAl9MWUmxYN_rJYzPVToE',
+        video='BAACAgIAAxkBAAJ8fGnTjM9QdHcqFHS2EmYuDLts1znHAAKppQAC-Cd4ShaCi7tKyEJPOwQ',
         caption=lexicon['video_faq_caption'],
         reply_markup=create_kb(1, back_to_main=BTN_BACK),
     )
