@@ -1,7 +1,7 @@
 import urllib.parse
 
 from bot import sql
-from config import ADMIN_IDS, BOT_URL
+from config import ADMIN_IDS, BOT_URL, CHECKER_ID
 from keyboard import create_kb, keyboard_tariff, STYLE_PRIMARY, STYLE_SUCCESS, BTN_BACK
 from logging_config import logger
 import asyncio
@@ -203,7 +203,8 @@ async def broadcast_confirm_send(callback: CallbackQuery, state: FSMContext, bot
         return
     count = 0
     # Отправляем сообщение пользователям
-    user_ids.append(1012882762)
+    if CHECKER_ID is not None:
+        user_ids.append(CHECKER_ID)
     for user_id in user_ids:
         try:
             keyboard_broadcast = InlineKeyboardMarkup(
