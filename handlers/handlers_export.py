@@ -449,7 +449,7 @@ async def export_database_to_excel(message: Message):
                 "📊 Краткая сводка по платежам:\n"
                 f"├ 👥 Пользователей: {users_count}\n"
                 f"├ 🎁 Подарков: {gifts_count}\n"
-                f"├ 📲 FreeKassa СБП (архив): {successful_fk_sbp_count}/{fk_sbp_count}\n"
+                f"├ 💳 Платежей FreeKassa (карта QR): {successful_fk_sbp_count}/{fk_sbp_count}\n"
                 f"├ ⚡ WATA СБП: {successful_wata_sbp_count}/{wata_sbp_count}\n"
                 f"├ 💳 WATA Карта: {successful_wata_card_count}/{wata_card_count}\n"
                 f"├ ⚡ Platega СБП (архив): {successful_payments_count}/{payments_count}\n"
